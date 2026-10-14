@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>맛동여지도 x 제주 맛집 (블루리본 & 미슐랭)</title>
+  
+  <!-- Font Awesome 아이콘 CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Kakao Map API -->
+  <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=48a1e905b1455f0b3e3a5b7e3452cae0&libraries=services"></script>
+
+  <style>
+    :root {
+      --primary-color: #03cf5d; /* 네이버 Green */
+      --primary-dark: #02b350;
+      --bg-gray: #f5f6f8;
+      --text-main: #111111;
+      --text-sub: #666666;
+      --border-color: #e3e5e8;
+      --badge-blue: #0066ff;
+      --badge-michelin: #bd1c2b;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", sans-serif;
+    }
+
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    /* 전체 레이아웃 */
+    .app-container {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    /* 상단 헤더 */
+    header {
+      height: 60px;
+      background: #ffffff;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      z-index: 100;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: var(--text-main);
+    }
+
+    .brand img {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid var(--primary-color);
+    }
+
+    .brand-title {
+      font-size: 1.15rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+
+    .brand-title span {
+      color: var(--primary-color);
+    }
+
+    /* 메인 컨텐츠 영역 */
+    .main-body {
+      display: flex;
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* 사이드바 (맛집 리스트) */
+    .sidebar {
+      width: 380px;
+      background: #ffffff;
+      border-right: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      z-index: 10;
+      box-shadow: 2px 0 10px rgba(0,0,0,0.05);
+    }
+
+    .search-filter-box {
+      padding: 16px;
+      border-bottom: 1px solid var(--border-color);
+      background: #ffffff;
+    }
+
+    .search-input-wrapper {
+      position: relative;
+      margin-bottom: 12px;
+    }
+
+    .search-input-wrapper i {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #999;
+    }
+
+    .search-input-wrapper input {
+      width: 100%;
+      padding: 10px 14px 10px 40px;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      font-size: 0.9rem;
+      outline: none;
+      background-color: var(--bg-gray);
+    }
+
+    .search-input-wrapper input:focus {
+      border-color: var(--primary-color);
+      background-color: #ffffff;
+    }
+
+    /* 카테고리 태그 */
+    .filter-tags {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+      scrollbar-width: none;
+    }
+    .filter-tags::-webkit-scrollbar { display: none; }
+
+    .tag-btn {
+      padding: 6px 14px;
+      border-radius: 20px;
+      border: 1px solid var(--border-color);
+      background: #ffffff;
+      font-size: 0.82rem;
+      font-weight: 600;
+      white-space: nowrap;
+      cursor: pointer;
+      color: var(--text-sub);
+      transition: all 0.2s;
+    }
+
+    .tag-btn.active {
+      background: var(--primary-color);
+      color: #ffffff;
+      border-color: var(--primary-color);
+    }
+
+    /* 맛집 리스트 */
+    .place-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px 16px;
+    }
+
+    .place-card {
+      display: flex;
+      gap: 12px;
+      padding: 14px;
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+      margin-bottom: 12px;
+      background: #ffffff;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .place-card:hover {
+      border-color: var(--primary-color);
+      box-shadow: 0 4px 12px rgba(3, 207, 93, 0.12);
+      transform: translateY(-2px);
+    }
+
+    .place-img {
+      width: 90px;
+      height: 90px;
+      border-radius: 8px;
+      object-fit: cover;
+      flex-shrink: 0;
+    }
+
+    .place-info {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .badge-container {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 4px;
+    }
+
+    .badge {
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: #ffffff;
+    }
+
+    .badge.blueribbon { background-color: var(--badge-blue); }
+    .badge.michelin { background-color: var(--badge-michelin); }
+    .badge.naver { background-color: var(--primary-color); }
+
+    .place-name {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 4px;
+    }
+
+    .place-meta {
+      font-size: 0.8rem;
+      color: var(--text-sub);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+
+    .rating {
+      color: #ff9500;
+      font-weight: 700;
+    }
+
+    .place-address {
+      font-size: 0.78rem;
+      color: #888888;
+    }
+
+    /* 지도 영역 */
+    .map-container {
+      flex: 1;
+      height: 100%;
+      position: relative;
+    }
+
+    #map {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* 내 위치 버튼 */
+    .my-location-btn {
+      position: absolute;
+      bottom: 24px;
+      right: 24px;
+      z-index: 5;
+      background: #ffffff;
+      border: 1px solid var(--border-color);
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      cursor: pointer;
+      color: #333;
+      font-size: 1.1rem;
+    }
+
+    .my-location-btn:hover {
+      color: var(--primary-color);
+    }
+
+    /* 카카오 지도 커스텀 오버레이 */
+    .custom-overlay {
+      position: relative;
+      background: #ffffff;
+      border-radius: 8px;
+      padding: 6px 12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+      border: 2px solid var(--primary-color);
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--text-main);
+      white-space: nowrap;
+      cursor: pointer;
+    }
+
+    .custom-overlay::after {
+      content: '';
+      position: absolute;
+      bottom: -8px;
+      left: 50%;
+      transform: translateX(-50%);
+      border-width: 8px 6px 0;
+      border-style: solid;
+      border-color: var(--primary-color) transparent;
+      display: block;
+      width: 0;
+    }
+
+    /* 모바일 대응 레이아웃 */
+    @media (max-width: 768px) {
+      .main-body {
+        flex-direction: column-reverse;
+      }
+      .sidebar {
+        width: 100%;
+        height: 45vh;
+        border-right: none;
+        border-top: 1px solid var(--border-color);
+      }
+      .map-container {
+        height: 55vh;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-container">
+    <!-- 헤더 -->
+    <header>
+      <a href="#" class="brand">
+        <img src="https://raw.githubusercontent.com/misolove3497-ai/image/main/%EB%A7%9B%EB%8F%99%EC%97%AC.jpeg" alt="맛동여지도">
+        <div class="brand-title">맛동여지도 <span>JEJU</span></div>
+      </a>
+      <div style="font-size: 0.85rem; color: #666; font-weight: 600;">
+        <i class="fa-solid fa-ribbon" style="color:#0066ff;"></i> 블루리본 & 미슐랭 가이드
+      </div>
+    </header>
+
+    <!-- 메인 컨텐츠 -->
+    <div class="main-body">
+      <!-- 좌측 사이드바 -->
+      <div class="sidebar">
+        <div class="search-filter-box">
+          <div class="search-input-wrapper">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" id="searchInput" placeholder="식당 이름, 메뉴, 지역 검색..." onkeyup="filterPlaces()">
+          </div>
+          <div class="filter-tags">
+            <button class="tag-btn active" onclick="setCategory('전체', this)">전체</button>
+            <button class="tag-btn" onclick="setCategory('블루리본/미슐랭', this)">🏆 인증맛집</button>
+            <button class="tag-btn" onclick="setCategory('흑돼지', this)">🥩 흑돼지</button>
+            <button class="tag-btn" onclick="setCategory('해산물/회', this)">🐟 해산물/회</button>
+            <button class="tag-btn" onclick="setCategory('고기국수/향토', this)">🍜 고기국수/향토</button>
+            <button class="tag-btn" onclick="setCategory('카페/디저트', this)">☕ 카페/디저트</button>
+          </div>
+        </div>
+
+        <div class="place-list" id="placeList">
+          <!-- 맛집 리스트가 자바스크립트로 동적 추가됩니다 -->
+        </div>
+      </div>
+
+      <!-- 우측 카카오 지도 -->
+      <div class="map-container">
+        <div id="map"></div>
+        <button class="my-location-btn" onclick="panToMyLocation()" title="내 위치로 이동">
+          <i class="fa-solid fa-location-crosshairs"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 1. 제주도 블루리본 & 미슐랭 & 네이버 인기 맛집 데이터셋
+    const places = [
+      {
+        id: 1,
+        name: "숙성도 노형본점",
+        category: "흑돼지",
+        badges: ["블루리본 2024", "네이버 추천"],
+        lat: 33.485215,
+        lng: 126.481520,
+        address: "제주 제주시 원노형로 41",
+        rating: 4.8,
+        reviews: 3200,
+        img: "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=300&q=80",
+        desc: "교차 숙성 방식으로 최상의 흑돼지 육즙을 자랑하는 명품 구이집"
+      },
+      {
+        id: 2,
+        name: "스시호시카이",
+        category: "블루리본/미슐랭",
+        badges: ["미슐랭 가이드", "블루리본 2024"],
+        lat: 33.491210,
+        lng: 126.531200,
+        address: "제주 제주시 오남로 90",
+        rating: 4.9,
+        reviews: 850,
+        img: "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?auto=format&fit=crop&w=300&q=80",
+        desc: "제주 제철 신선한 해산물로 선보이는 하이엔드 오마카세 스시"
+      },
+      {
+        id: 3,
+        name: "자매국수",
+        category: "고기국수/향토",
+        badges: ["블루리본 2024"],
+        lat: 33.511050,
+        lng: 126.533210,
+        address: "제주 제주시 탑동로 11-1",
+        rating: 4.6,
+        reviews: 4100,
+        img: "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=300&q=80",
+        desc: "진하고 구수한 돼지사골 육수와 부드러운 중면의 고기국수 전문점"
+      },
+      {
+        id: 4,
+        name: "맛나식당",
+        category: "해산물/회",
+        badges: ["블루리본 2024"],
+        lat: 33.463200,
+        lng: 126.935100,
+        address: "제주 서귀포시 성산읍 동류암로 41",
+        rating: 4.7,
+        reviews: 1950,
+        img: "https://images.unsplash.com/photo-1534422298391-e4f8c172dddb?auto=format&fit=crop&w=300&q=80",
+        desc: "성산일출봉 근처의 매콤달콤한 갈치조림 & 고등어조림 맛집"
+      },
+      {
+        id: 5,
+        name: "연돈",
+        category: "블루리본/미슐랭",
+        badges: ["네이버 추천"],
+        lat: 33.258810,
+        lng: 126.407230,
+        address: "제주 서귀포시 색달로 10",
+        rating: 4.8,
+        reviews: 5800,
+        img: "https://images.unsplash.com/photo-1552611052-33e04de081de?auto=format&fit=crop&w=300&q=80",
+        desc: "바삭함의 극치! 빵가루와 신선한 흑돼지로 만든 수제 돈가스"
+      },
+      {
+        id: 6,
+        name: "원앤온리",
+        category: "카페/디저트",
+        badges: ["블루리본 2024"],
+        lat: 33.239200,
+        lng: 126.319500,
+        address: "제주 서귀포시 안덕면 산방로 141",
+        rating: 4.5,
+        reviews: 3800,
+        img: "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=300&q=80",
+        desc: "산방산과 황우지 해안 뷰를 한눈에 담는 시그니처 뷰 맛집 카페"
+      },
+      {
+        id: 7,
+        name: "칠돈가 본점",
+        category: "흑돼지",
+        badges: ["네이버 추천"],
+        lat: 33.499800,
+        lng: 126.520100,
+        address: "제주 제주시 서광로 127",
+        rating: 4.7,
+        reviews: 2400,
+        img: "https://images.unsplash.com/photo-1529692236671-f1f6cf9683ba?auto=format&fit=crop&w=300&q=80",
+        desc: "두툼한 근고기와 멜젓의 독보적인 궁합을 선보이는 흑돼지 연탄구이"
+      },
+      {
+        id: 8,
+        name: "명진전복",
+        category: "해산물/회",
+        badges: ["블루리본 2024"],
+        lat: 33.531200,
+        lng: 126.832100,
+        address: "제주 제주시 구좌읍 해맞이해안로 1282",
+        rating: 4.6,
+        reviews: 2900,
+        img: "https://images.unsplash.com/photo-1615141982883-c7ad0e69fd62?auto=format&fit=crop&w=300&q=80",
+        desc: "바다 향 가득 고소한 전복돌솥밥과 전복구이가 일품인 고성리 맛집"
+      }
+    ];
+
+    let map;
+    let markers = [];
+    let overlays = [];
+    let selectedCategory = '전체';
+
+    // 2. 카카오 지도 초기화
+    function initMap() {
+      const container = document.getElementById('map');
+      const options = {
+        center: new kakao.maps.LatLng(33.38, 126.55), // 제주도 중심 좌표
+        level: 9
+      };
+      map = new kakao.maps.Map(container, options);
+
+      // 지도 제어 컨트롤 추가
+      const zoomControl = new kakao.maps.ZoomControl();
+      map.addControl(zoomControl, kakao.maps.ControlPosition.RIGHT);
+
+      renderPlaces(places);
+    }
+
+    // 3. 맛집 리스트 및 지도 마커 렌더링
+    function renderPlaces(data) {
+      const placeListEl = document.getElementById('placeList');
+      placeListEl.innerHTML = '';
+
+      // 기존 마커 및 오버레이 제거
+      markers.forEach(m => m.setMap(null));
+      overlays.forEach(o => o.setMap(null));
+      markers = [];
+      overlays = [];
+
+      data.forEach(place => {
+        // --- 사이드바 카드 생성 ---
+        const card = document.createElement('div');
+        card.className = 'place-card';
+        card.onclick = () => focusPlace(place);
+
+        let badgeHTML = '';
+        place.badges.forEach(b => {
+          if (b.includes('블루리본')) badgeHTML += `<span class="badge blueribbon">${b}</span>`;
+          else if (b.includes('미슐랭')) badgeHTML += `<span class="badge michelin">${b}</span>`;
+          else badgeHTML += `<span class="badge naver">${b}</span>`;
+        });
+
+        card.innerHTML = `
+          <img src="${place.img}" class="place-img" alt="${place.name}">
+          <div class="place-info">
+            <div class="badge-container">${badgeHTML}</div>
+            <div class="place-name">${place.name}</div>
+            <div class="place-meta">
+              <span class="rating">★ ${place.rating}</span>
+              <span>리뷰 ${place.reviews}</span>
+            </div>
+            <div class="place-address">${place.address}</div>
+          </div>
+        `;
+        placeListEl.appendChild(card);
+
+        // --- 지도 커스텀 오버레이 마커 생성 ---
+        const position = new kakao.maps.LatLng(place.lat, place.lng);
+
+        const content = document.createElement('div');
+        content.className = 'custom-overlay';
+        content.innerHTML = `📍 ${place.name}`;
+        content.onclick = () => focusPlace(place);
+
+        const customOverlay = new kakao.maps.CustomOverlay({
+          position: position,
+          content: content,
+          yAnchor: 1.3
+        });
+
+        customOverlay.setMap(map);
+        overlays.push(customOverlay);
+      });
+    }
+
+    // 4. 특정 맛집 클릭 시 지도 이동 및 줌인
+    function focusPlace(place) {
+      const moveLatLon = new kakao.maps.LatLng(place.lat, place.lng);
+      map.setCenter(moveLatLon);
+      map.setLevel(4);
+    }
+
+    // 5. 카테고리 필터링
+    function setCategory(category, btn) {
+      selectedCategory = category;
+      
+      // 태그 버튼 활성화 스타일
+      document.querySelectorAll('.tag-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      filterPlaces();
+    }
+
+    // 6. 검색어 및 카테고리 필터 통합 검색
+    function filterPlaces() {
+      const keyword = document.getElementById('searchInput').value.toLowerCase();
+
+      const filtered = places.filter(place => {
+        const matchesCategory = (selectedCategory === '전체') ||
+          (selectedCategory === '블루리본/미슐랭' && place.badges.some(b => b.includes('블루리본') || b.includes('미슐랭'))) ||
+          (place.category === selectedCategory);
+
+        const matchesKeyword = place.name.toLowerCase().includes(keyword) ||
+          place.address.toLowerCase().includes(keyword) ||
+          place.desc.toLowerCase().includes(keyword);
+
+        return matchesCategory && matchesKeyword;
+      });
+
+      renderPlaces(filtered);
+    }
+
+    // 7. 내 위치 찾기 기능
+    function panToMyLocation() {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(position => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          const locPosition = new kakao.maps.LatLng(lat, lng);
+          map.setCenter(locPosition);
+          map.setLevel(5);
+        }, () => {
+          alert("위치 정보를 가져올 수 없습니다.");
+        });
+      } else {
+        alert("이 브라우저에서는 위치 서비스를 지원하지 않습니다.");
+      }
+    }
+
+    // 앱 로드 시 지도 초기화
+    window.onload = initMap;
+  </script>
+</body>
+</html>
